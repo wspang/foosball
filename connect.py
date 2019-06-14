@@ -1,11 +1,12 @@
-
+from google.cloud import bigquery
+from google.oauth2 import service_account
 import pymysql
 import os
 # This file will return the connection needed to hook up with Cloud SQL
 
-def sql_connect():
-    """Define connection based on operating system. Values defined in app.yaml file
-       Method is called in main.py file for any SQL connections that need to be made"""
+"""def sql_connect():
+    #Define connection based on operating system. Values defined in app.yaml file
+    #   Method is called in main.py file for any SQL connections that need to be made
 
     db_user = os.environ.get('SQL_USER')
     db_password = os.environ.get('SQL_PASSWORD')
@@ -18,4 +19,10 @@ def sql_connect():
     else:  # Connection is local machine. Use proxy.
         host = '127.0.0.1'
         conn = pymysql.connect(user=db_user, password=db_password, host=host, db=db_name)
-    return conn
+    return conn"""
+
+def bq_connect():
+    safile = "service-bq.json"
+    credentials = service_account.Credentials.from_service_account_file(safile)
+    client = bigquery.Client(project='cpb100-213205', credentials=credentials)
+    return client
