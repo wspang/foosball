@@ -1,7 +1,6 @@
 
 
 runtime: python
-env: flex
 entrypoint: gunicorn -b :$PORT app:app
 service: "foosball"
 

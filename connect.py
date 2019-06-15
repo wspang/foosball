@@ -1,4 +1,5 @@
 from google.cloud import bigquery
+from google.cloud import datastore
 from google.oauth2 import service_account
 import pymysql
 import os
@@ -23,7 +24,19 @@ def sql_connect():
     return conn
 
 def bq_connect():
-    safile = "service-bq.json"
-    credentials = service_account.Credentials.from_service_account_file(safile)
-    client = bigquery.Client(project='cpb100-213205', credentials=credentials)
+    if os.environ.get('GAE-ENV') == 'standard':  # means configured to App Engine
+        client = bigquery.Client()
+    else:
+        safile = "service-bq.json"
+        credentials = service_account.Credentials.from_service_account_file(safile)
+        client = bigquery.Client(project='cpb100-213205', credentials=credentials)
+    return client
+
+def ds_connect():
+    if os.environ.get('GAE-ENV') == 'standard':  # means configured to App Engine
+        client = datastore.Client()
+    else:
+        safile = "service-bq.json"
+        credentials = service_account.Credentials.from_service_account_file(safile)
+        client = datastore.Client(project='cpb100-213205', credentials=credentials)
     return client

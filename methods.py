@@ -3,127 +3,144 @@
    4 Players are input for a game. When 10 goals are scored, it uploads data to BQ.
    **unfortunately, cannot get cloud sql proxy on bootleg linux chromebook :( """
 
-from pyfirmata import Arduino, util  # packages to read microcontroller
 import time  # used to set a delay after a goal is scored
 import os  # below cmd depends on OS type
-from connect import bq_connect, sql_connect
+from connect import sql_connect, ds_connect
 import logging
+from google.cloud import datastore
 
 
-BQ_TABLE = "foosball.player_stats"
-SQL_LOG_TABLE = "gamelogs"
-
-class foos:
+class GameSetup:
     def __init__(self):
+        self.client, self.kind, self.sql_players = ds_connect(), "TredenceEmployees", "players"
         pass
-    def game(self, hd, hf, ad, af):  # home and away forward/defense positions.
-        """Takes 4 players as input for game (brown, silver, and positions)
-        Listens to Arduino and tracks goals for the game.
-        Process terminates when first team gets 10 goals"""
 
-        os.system('sudo chmod a+rw /dev/ttyACM0')  # set permission on microcontroller
+    def ds_check(self, pid):
+        """Get from Datastore to see if entity exists."""
+        # Establish client connection then get player name from DataStore.
+        get_key = self.client.key(self.kind, pid)
 
-        try:
-            usbconnection = '/dev/ttyACM0'  # USB port read on computer
-            board = Arduino(usbconnection)
-            it = util.Iterator(board=board)  # iterator thread to avoid data overflow
+        try:  # If return, the name / entry exists.
+            name = dict(self.client.get(get_key))['fullName']
+            return name
+        except TypeError:  # Type error means player does not exist. Need to make.
+            return False
 
-            # vars to track goals during game.
-            home_goals = 0
-            hping = 830  # this is the sensor value that triggers goal //recal
-            away_goals = 0
-            aping = 650  # this is the sensor value that triggers goal //recal
-            game_over = 10
+    def player_entry(self, pid, name):
+        """If an entry does not exist -- have player make an entry and update
+           DataStore contact log and insert row to Cloud SQL."""
+        # 1) Create a DataStore entity in the player kind
+        key = self.client.key(self.kind, pid)
+        entity = datastore.Entity(key=key)
+        entity['fullName'] = name
+        self.client.put(entity)
+        logging.info("Created datastore entity {}-{}".format(pid, name))
 
-            # Enable pin reads for Arduino
-            it.start()  # start tracking arduino measures
-            home_pin = board.get_pin('a:0:i')  # analog, pin, output 'o' or input 'i'
-            home_pin.enable_reporting()
-            away_pin = board.get_pin('a:1:i')  # analog, pin, output 'o' or input 'i'
-            away_pin.enable_reporting()
+        # 2) Insert a player_id row to the cloud sql table.
+        insert_query = "INSERT INTO {} (player_id, name) VALUES ('{}', '{}');".format(self.sql_players, pid, name)
+        conn = sql_connect()
+        with conn.cursor() as cur:
+            cur.execute(insert_query)
+            cur.close()
+        conn.close()
+        logging.info("Inserted {} into sql as player id: {}".format(name, pid))
+        return True
 
-            # Now, continuously read measures during game to track goals
-            while home_goals < game_over or away_goals < game_over:
-                if home_pin.read() == bping:
-                    home_goals += 1
-                    time.sleep(3)
-                if away_pin.read() == sping:
-                    away_goals += 1
-                    time.sleep(3)
 
-            # Metrics to return for DB upload. Player IDs then scores.
-            home_won = True if home_goals > away_goals else False
-            output = {"home_defense":hd, "home_offense":hf, "away_defense":ad, "away_offense":af,
-                        "home_score":home_goals, "away_score":away_goals, "home_won":home_won}
-
-        except:
-            output = {"home_defense": hd, "home_offense": hf, "away_defense": ad, "away_offense": af,
-                      "home_score": 10, "away_score": 8, "home_won": 1}
-
-        return output
+class Foos:
+    def __init__(self):
+        self.sql_logs, self.sql_players = "gamelogs", "players"
+        pass
 
     def game_log(self, results):
         """Take stats from the game and upload to game log table(s)."""
+        # 1) Format results json keys into column inserts string for SQL query.
+        #       Format values into query string as either ints or 'strings'
         cols, vals = "", ""
         for k, v in results.items():
             cols += "{}, ".format(k)
-            vals += "'{}', ".format(v)
-        cols, vals = cols[:-2], vals[:-2]  # drop off last comma
+            if type(v) == int:
+                vals += "{}, ".format(v)
+            else:
+                vals += "'{}', ".format(v)
+        cols, vals = cols[:-2], vals[:-2]  # drop off last comma and space.
+
         # Upload results to CloudSQL
         conn = sql_connect()
         with conn.cursor() as cursor:
-            sql_query = "INSERT INTO {} ({}) VALUES ({});".format(SQL_LOG_TABLE, cols, vals)
+            sql_query = "INSERT INTO {} ({}) VALUES ({});".format(self.sql_logs, cols, vals)
             cursor.execute(sql_query)
             logging.info("executed query: {}".format(sql_query))
-            #cursor.commit()
             cursor.close()
         conn.close()
         return "updated."
 
     def player_stats(self, params):
         """Takes in stats returned from game. Processes for update query to player stats table."""
-        # Connect with BQ and update values for player stats by first doing a query on
-        # their stats. Then doing a += or some alteration.
+        # Parse game results and format a query for each player dependent on their team outcome.
 
-        # 1) Parse output of game for player IDs to update whether they won or not.
-        if params['home_won'] is True:
-            winner_offense = {"player_id":params['home_offense'], "goals_for":params['home_score'],
-                "goals_against":params['away_score'], "won":1}
-            winner_defense = {"player_id":params['home_defense'], "goals_for":params['home_score'],
-                "goals_against":params['away_score'], "won":1}
-            loser_offense = {"player_id":params['away_offense'], "goals_for":params['away_score'],
-                "goals_against":params['home_score'], "won":0}
-            loser_defense = {"player_id":params['away_defense'], "goals_for":params['away_score'],
-                "goals_against":params['home_score'], "won":0}
-        else:
-            winner_offense = {"player_id":params['away_offense'], "goals_for":params['away_score'],
-                "goals_against":params['home_score'], "won":1}
-            winner_defense = {"player_id":params['away_defense'], "goals_for":params['away_score'],
-                "goals_against":params['home_score'], "won":1}
-            loser_offense = {"player_id":params['home_offense'], "goals_for":params['home_score'],
-                "goals_against":params['away_score'], "won":0}
-            loser_defense = {"player_id":params['home_defense'], "goals_for":params['home_score'],
-                "goals_against":params['away_score'], "won":0}
+        # 1) Parse output of game for player IDs to update whether they won or not. Will use as vals in update query.
+        if params['home_won'] == 1:  # make values for home as winners
+            winner_offense = {"player_id": params['home_offense'], "goals_for": params['home_score'],
+                              "goals_against": params['away_score'], "won": 1, "offense_games": 1, "defense_games": 0}
+            winner_defense = {"player_id": params['home_defense'], "goals_for": params['home_score'],
+                              "goals_against": params['away_score'], "won": 1, "defense_games": 1, "offense_games": 0}
+            loser_offense = {"player_id": params['away_offense'], "goals_for": params['away_score'],
+                             "goals_against": params['home_score'], "won": 0, "offense_games": 1, "defense_games": 0}
+            loser_defense = {"player_id": params['away_defense'], "goals_for": params['away_score'],
+                             "goals_against": params['home_score'], "won": 0, "defense_games": 1, "offense_games": 0}
+        else:  # make values for away as winners
+            winner_offense = {"player_id": params['away_offense'], "goals_for": params['away_score'],
+                              "goals_against": params['home_score'], "won": 1, "offense_games": 1, "defense_games": 0}
+            winner_defense = {"player_id": params['away_defense'], "goals_for": params['away_score'],
+                              "goals_against": params['home_score'], "won": 1, "defense_games": 1, "offense_games": 0}
+            loser_offense = {"player_id": params['home_offense'], "goals_for": params['home_score'],
+                             "goals_against": params['away_score'], "won": 0, "offense_games": 1, "defense_games": 0}
+            loser_defense = {"player_id": params['home_defense'], "goals_for": params['home_score'],
+                             "goals_against": params['away_score'], "won": 0, "defense_games": 1, "offense_games": 0}
+
         # Create a dictionary of dictionary values to reference for query updates
         gameplayers = {winner_offense['player_id']:winner_offense, winner_defense['player_id']:winner_defense,
                         loser_offense['player_id']:loser_offense, loser_defense['player_id']:loser_defense}
 
         # 2) Get query of 4 players above to build on their existing values. Returns list.
-        with bq_connect() as client:
-            condition = "player_id = '{}' or player_id = '{}' or player_id = '{}' or player_id = '{}'".format(
-                        winner_offense['player_id'], winner_defense['player_id'], loser_offense['player_id'], loser_defense['player_id'])
-            query = "SELECT * EXCEPT name FROM {} WHERE {} ORDER BY player_id".format(BQ_TABLE, condition)
-            bq_players = client.query(query)
-            bq_players = bq_players.result()  # list of 4 players and their stats.
+        conn = sql_connect()
+        #   a) only retrieve records for the 4 players
+        condition = "player_id = '{}' or player_id = '{}' or player_id = '{}' or player_id = '{}'".format(
+                    winner_offense['player_id'], winner_defense['player_id'], loser_offense['player_id'],
+                        loser_defense['player_id'])
+        query = "SELECT * EXCEPT name, gametime FROM {} WHERE {} ORDER BY player_id".format(self.sql_players, condition)
+        with conn.cursor() as cur:
+            cur.execute(query)
+            old_stats = cur.fetchall()  # list of 4 players and their stats.
+            cur.close()
+        conn.close()
 
-        # 3) perform 4 update queries on the above players. Below list is player IDs.
-        # Need to create a query string to perform one update statement per player.
-        player_updates = [winner_offense, winner_defense, loser_offense, loser_defense]
-        for pid in bq_players:
-            metrics = gameplayers[pid.player_id]  # match BQ player ID to gameplayer stats dict
-            gfor, gaga, wins = pid.team_goals_scored + metrics['goals_for'], pid.team_goals_against + metrics['goals_against'], pid.games_won + metrics['won']
-            query = ("UPDATE {} SET team_goals_scored = {}, team_goals_against = {}, games_won = {} " 
-                     "WHERE player_id = '{}'").format(BQTABLE, gfor, gaga, wins, pid.player_id)
-            with bq_connect() as client:
-                client.query(query)
-        return "successfully updated stats"
+        # 3) With four players retrieved above, iterate through to get new values. Then perform update query.
+        for pstats in old_stats:
+            # Use metrics and query values to assign new stats values
+            metrics = gameplayers[pstats[0]]  # json of game results corresponding to current player in loop from query
+            player_id, total_games, total_wins = pstats[0], pstats[1] + 1, pstats[2] + metrics['won']
+            offense_games = pstats[3] + metrics['offense_games']
+            offense_wins = pstats[4] + metrics['won'] if metrics['offense_games'] == 1 else pstats[4]
+            defense_games = pstats[5] + metrics['defense_games']
+            defense_wins = pstats[6] + metrics['won'] if metrics['defense_games'] == 1 else pstats[6]
+            team_goals_scored, team_goals_against = pstats[7] + ['goals_for'], pstats[8] + metrics['goals_against']
+
+            # Perform an update query on SQL table with given values above.
+            update_query = ("UPDATE {} SET "
+                            "total_games = {}, total_wins = {}, "
+                            "offense_games = {}, offense_wins = {}, "
+                            "defense_games = {}, defense_wins = {}, "
+                            "team_goals_scored = {}, team_goals_against = {} "
+                            "WHERE player_id = {}").format(self.sql_players, total_games, total_wins,
+                                                           offense_games, offense_wins, defense_games,
+                                                           defense_wins, team_goals_scored,
+                                                           team_goals_against, player_id)
+
+            conn = sql_connect()
+            with conn.cursor() as cur:
+                cur.execute(update_query)
+                cur.close()
+            conn.close()
+        return True
