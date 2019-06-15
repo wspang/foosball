@@ -39,6 +39,7 @@ class GameSetup:
         # 2) Insert a player_id row to the cloud sql table.
         insert_query = "INSERT INTO {} (player_id, name) VALUES ('{}', '{}');".format(self.sql_players, pid, name)
         conn = sql_connect()
+        conn.connect()
         with conn.cursor() as cur:
             cur.execute(insert_query)
             cur.close()
@@ -67,6 +68,7 @@ class Foos:
 
         # Upload results to CloudSQL
         conn = sql_connect()
+        conn.connect()
         with conn.cursor() as cursor:
             sql_query = "INSERT INTO {} ({}) VALUES ({});".format(self.sql_logs, cols, vals)
             cursor.execute(sql_query)
@@ -110,6 +112,7 @@ class Foos:
                     winner_offense['player_id'], winner_defense['player_id'], loser_offense['player_id'],
                         loser_defense['player_id'])
         query = "SELECT * EXCEPT name, gametime FROM {} WHERE {} ORDER BY player_id".format(self.sql_players, condition)
+        conn.connect()
         with conn.cursor() as cur:
             cur.execute(query)
             old_stats = cur.fetchall()  # list of 4 players and their stats.
@@ -139,8 +142,9 @@ class Foos:
                                                            team_goals_against, player_id)
 
             conn = sql_connect()
+            conn.connect()
             with conn.cursor() as cur:
                 cur.execute(update_query)
                 cur.close()
             conn.close()
-        return True
+        return "updated."

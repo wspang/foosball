@@ -3,6 +3,7 @@ from google.cloud import datastore
 from google.oauth2 import service_account
 import pymysql
 import os
+import sqlalchemy
 
 # This file will return the connection needed to hook up with Cloud SQL
 
@@ -17,7 +18,9 @@ def sql_connect():
     unix_socket = '/cloudsql/{}'.format(db_connection_name)
 
     if os.environ.get('GAE-ENV') == 'standard':  # means configured to App Engine
-        conn = pymysql.connect(user=db_user, password=db_password, unix_socket=unix_socket, db=db_name)
+        #conn = pymysql.connect(user=db_user, password=db_password, unix_socket=unix_socket, db=db_name)
+        conn = sqlalchemy.create_engine(
+            "mysql+pymysql://{}:{}@/{}?unix_socket={}".format(db_user, db_password, db_name, unix_socket))
     else:  # Connection is local machine. Use proxy.
         host = '127.0.0.1'
         conn = pymysql.connect(user=db_user, password=db_password, host=host, db=db_name)

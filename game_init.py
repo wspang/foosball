@@ -28,19 +28,19 @@ def get_players():
     for p in [hf, hd, af, ad]:
 
         if len(p) != 4:  # check first if they entered a valid id.
-            raise Exception ("{} did not enter a valid 4 digit ID. Do it again.".format(p))
+            raise Exception("{} did not enter a valid 4 digit ID. Do it again.".format(p))
 
         purl = URL.format("getplayer/{}").format(p)
         player = requests.get(url=purl)
-        print("player API:", player.status_code, player.content)
-        player = player.content
+        print("player API:", player.status_code, player.text)
+        player = player.text
 
-        if player is not False:  # player exists
+        if player != "noPlayer":  # player exists
             print("game on {}".format(player))
 
         else:  # player does not exist, need to make an entry
             purl = URL.format("addplayer")
-            body = {"pid": p, "fullName": str(input("enter your name"))}
+            body = {"pid": p, "fullName": str(input("emp {}: enter your name".format(p)))}
             requests.post(url=purl, json=body)
 
     return [hf, hd, af, ad]  # return a list of player IDs to start game.
@@ -115,7 +115,7 @@ def upload_data(results):
     return True
 
 # test above.
-print("testing get players:", get_players())
+#print("testing get players:", get_players())
 
 
 
