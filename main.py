@@ -7,11 +7,6 @@ from connect import bq_connect
 from methods import Foos, GameSetup
 app = Flask(__name__)
 
-# Establish connections to Cloud SQL and provide service acct key for client access.
-GOOGLE_APPLICATION_CREDENTIALS, CONNECTION = "cloudsql_key.json", bq_connect()  
-
-#    output = {"home_defense":hd, "home_offense":hf, "away_defense":ad, "away_offense":af, 
- #               "home_score":home_goals, "away_score":away_goals, "home_won":home_won}
 
 @app.route('/')
 def main_page():

@@ -13,7 +13,7 @@ import os
 import sys
 import requests
 import time
-URL = "https://appspot.blabla"
+URL = "https://foosball-dot-cpb100-213205.appspot.com/{}"
 
 def get_players():
     """Players enter their employee IDs to log them to game.
@@ -31,7 +31,9 @@ def get_players():
             raise Exception ("{} did not enter a valid 4 digit ID. Do it again.".format(p))
 
         purl = URL.format("getplayer/{}").format(p)
-        player = requests.get(url=purl).content
+        player = requests.get(url=purl)
+        print("player API:", player.status_code, player.content)
+        player = player.content
 
         if player is not False:  # player exists
             print("game on {}".format(player))
