@@ -1,12 +1,8 @@
 
 
-runtime: python
+runtime: python37
 entrypoint: gunicorn -b :$PORT app:app
 service: "foosball"
-
-runtime_config:
-    python_version: 3.7
-
 
 env_variables:
 
