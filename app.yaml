@@ -9,8 +9,8 @@ env_variables:
     SQL_USER: root
     SQL_PASSWORD: will123
     SQL_DATABASE: foos
-    INSTANCE_CONNECTION_NAME: misc-apps:us-central1:foos
+    INSTANCE_CONNECTION_NAME: cpb100-213205:us-central1:misc-apps
 
 
 beta_settings:
-    cloud_sql_instances: "misc-apps:us-central1:foos"
+    cloud_sql_instances: "cpb100-213205:us-central1:misc-apps"

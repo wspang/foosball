@@ -112,9 +112,13 @@ def upload_data(results):
     requests.post(url=URL.format("playerstats"), json=results)
     return True
 
+# test above.
+print("testing get players:", get_players())
 
-"""Execute the above flow of functions to run process."""
-players = get_players()  # returns list of entry for game function
+
+
+# Execute the above flow of functions to run process.
+"""players = get_players()  # returns list of entry for game function
 try:
     if sys.argv[1] == 's':
         results = sensor_game(hf=players[0], hd=players[1], af=players[2], ad=players[3])
@@ -122,4 +126,4 @@ try:
         results = input_game(hf=players[0], hd=players[1], af=players[2], ad=players[3])
 except IndexError:
     results = input_game(hf=players[0], hd=players[1], af=players[2], ad=players[3])
-upload_data(results=results)
+upload_data(results=results)"""
