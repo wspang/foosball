@@ -12,13 +12,13 @@ runtime_config:
 env_variables:
 
     SQL_USER: root
-    SQL_PASSWORD: test@123
+    SQL_PASSWORD: will123
     SQL_DATABASE: foos
-    INSTANCE_CONNECTION_NAME: crazy-apps-dbs:us-central1-a:foos
+    INSTANCE_CONNECTION_NAME: misc-apps:us-central1-a:foos
 
 
 beta_settings:
-    cloud_sql_instances: "crazy-apps-dbs:us-central1-a:foos"
+    cloud_sql_instances: "misc-apps:us-central1-a:foos"
 
 automatic_scaling:
   min_num_instances: 1

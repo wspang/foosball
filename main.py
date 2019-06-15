@@ -2,9 +2,9 @@
    Main methods are called from methods file. 
    Utilizes a CloudSQL backend for stats tracking. For now, only have player entry page."""
 
-from flask import Flask, redirect, render_template
+from flask import Flask, redirect, render_template, request
 from connect import bq_connect
-from methods import game,player_stats
+from methods import foos
 app = Flask(__name__)
 
 # Establish connections to Cloud SQL and provide service acct key for client access.
@@ -19,26 +19,19 @@ def main_page():
        or a stats viewing page"""
     return "wats pippin"
 
-@app.route('/game')
+@app.route('/game', methods=['POST'])
 def game():
     """Calls on game method from methods file. Allow player name entry then start game."""
-    results = game(hd=a,hf=b,ad=c,af=d)  # Call game method and get results
-    
-    # define columns and values to insert into main table. format query string.   
-    cols, vals = "", ""
-    for k, v in results.items():
-        cols += "{}, ".format(k)
-        vals += "{}, ".format(v)
-    cols, vals = cols[:-2], vals[:-2]  # drop off last comma
+    #results = foos().game(hd='0001',hf='0002',ad='0003',af='0004')  # Call game method and get results
 
-    # Upload results to CloudSQL
-    with CONNECTION.cursor() as cursor:
-        sql_query = "INSERT INTO TABLE main({}) VALUES ({});".format(cols, vals)
-        cursor.execute(sql_query)
-        cursor.commit()
-        cursor.close()
-    CONNECTION.close()
-    return
+    hd,hf,ad,af =  '0001', '0002', '0003', '0004'
+
+    output = {"home_defense": hd, "home_offense": hf, "away_defense": ad, "away_offense": af,
+              "home_score": 10, "away_score": 8, "home_won": 1}
+
+    logged = foos().game_log(results=output)  # Log the game in game logging table.
+    #players_logged = foos().player_stats(params=results)  # update individual player stats.
+    return logged
 
 @app.route('/stats')
 def stats():
