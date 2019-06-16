@@ -37,9 +37,9 @@ class GameSetup:
         logging.info("Created datastore entity {}-{}".format(pid, name))
 
         # 2) Insert a player_id row to the cloud sql table.
-        insert_query = "INSERT INTO {} (player_id, name) VALUES ('{}', '{}');".format(self.sql_players, pid, name)
+        insert_query = "INSERT INTO {0} VALUES ('{1}', '{2}', {3}, {3}, {3}, {3}, {3}, {3}, {3}, {3});".format(
+            self.sql_players, pid, name, 0)
         conn = sql_connect()
-        conn.connect()
         with conn.cursor() as cur:
             cur.execute(insert_query)
             cur.close()
@@ -68,14 +68,13 @@ class Foos:
 
         # Upload results to CloudSQL
         conn = sql_connect()
-        conn.connect()
         with conn.cursor() as cursor:
             sql_query = "INSERT INTO {} ({}) VALUES ({});".format(self.sql_logs, cols, vals)
             cursor.execute(sql_query)
             logging.info("executed query: {}".format(sql_query))
             cursor.close()
         conn.close()
-        return "updated."
+        return True
 
     def player_stats(self, params):
         """Takes in stats returned from game. Processes for update query to player stats table."""
@@ -104,6 +103,7 @@ class Foos:
         # Create a dictionary of dictionary values to reference for query updates
         gameplayers = {winner_offense['player_id']:winner_offense, winner_defense['player_id']:winner_defense,
                         loser_offense['player_id']:loser_offense, loser_defense['player_id']:loser_defense}
+        logging.info("game input:{}".format(gameplayers))
 
         # 2) Get query of 4 players above to build on their existing values. Returns list.
         conn = sql_connect()
@@ -111,13 +111,15 @@ class Foos:
         condition = "player_id = '{}' or player_id = '{}' or player_id = '{}' or player_id = '{}'".format(
                     winner_offense['player_id'], winner_defense['player_id'], loser_offense['player_id'],
                         loser_defense['player_id'])
-        query = "SELECT * EXCEPT name, gametime FROM {} WHERE {} ORDER BY player_id".format(self.sql_players, condition)
-        conn.connect()
+        get_cols = ("player_id, total_games, total_wins, offense_games, offense_wins, defense_games, defense_wins, "
+                    "team_goals_scored, team_goals_against")
+        query = "SELECT {} FROM {} WHERE {};".format(get_cols, self.sql_players, condition)
         with conn.cursor() as cur:
             cur.execute(query)
             old_stats = cur.fetchall()  # list of 4 players and their stats.
             cur.close()
         conn.close()
+        logging.info("old stats: {}".format(old_stats))
 
         # 3) With four players retrieved above, iterate through to get new values. Then perform update query.
         for pstats in old_stats:
@@ -128,7 +130,7 @@ class Foos:
             offense_wins = pstats[4] + metrics['won'] if metrics['offense_games'] == 1 else pstats[4]
             defense_games = pstats[5] + metrics['defense_games']
             defense_wins = pstats[6] + metrics['won'] if metrics['defense_games'] == 1 else pstats[6]
-            team_goals_scored, team_goals_against = pstats[7] + ['goals_for'], pstats[8] + metrics['goals_against']
+            team_goals_scored,team_goals_against = pstats[7] + metrics['goals_for'],pstats[8] + metrics['goals_against']
 
             # Perform an update query on SQL table with given values above.
             update_query = ("UPDATE {} SET "
@@ -136,15 +138,15 @@ class Foos:
                             "offense_games = {}, offense_wins = {}, "
                             "defense_games = {}, defense_wins = {}, "
                             "team_goals_scored = {}, team_goals_against = {} "
-                            "WHERE player_id = {}").format(self.sql_players, total_games, total_wins,
+                            "WHERE player_id = '{}';").format(self.sql_players, total_games, total_wins,
                                                            offense_games, offense_wins, defense_games,
                                                            defense_wins, team_goals_scored,
                                                            team_goals_against, player_id)
 
+            logging.info("player stats update query: {}".format(update_query))
             conn = sql_connect()
-            conn.connect()
             with conn.cursor() as cur:
                 cur.execute(update_query)
                 cur.close()
             conn.close()
-        return "updated."
+        return True

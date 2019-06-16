@@ -20,27 +20,35 @@ def get_players():
        Checks DataStore to see if contact exists or not. If not, user enters their name.
        If so, will show their name as a confirmation."""
     # Command line inputs to player IDs.
-    hf = str(input("\nHOME OFFENSE:\n\tenter 4 digit employee ID:"))
-    hd = str(input("\nHOME DEFENSE:\n\tenter 4 digit employee ID:"))
-    af = str(input("\nAWAY OFFENSE:\n\tenter 4 digit employee ID:"))
-    ad = str(input("\nAWAY DEFENSE:\n\tenter 4 digit employee ID:"))
-    # Check if player entry exists. If not, create one. If so, confirm name.
+    hf = str(input("\nHOME OFFENSE:\n\tenter 4 digit employee ID:\n\t"))
+    hd = str(input("\nHOME DEFENSE:\n\tenter 4 digit employee ID:\n\t"))
+    af = str(input("\nAWAY OFFENSE:\n\tenter 4 digit employee ID:\n\t"))
+    ad = str(input("\nAWAY DEFENSE:\n\tenter 4 digit employee ID:\n\t"))
+
+    # Check if ID entered is valid 4 numeric characters.
     for p in [hf, hd, af, ad]:
-
         if len(p) != 4:  # check first if they entered a valid id.
-            raise Exception("{} did not enter a valid 4 digit ID. Do it again.".format(p))
+            raise Exception("{} did not enter a valid 4 digit numeric ID. Do it again.".format(p))
+        try:  # check if ID entered is 4 numeric character.
+            int(p)
+        except ValueError:
+            raise Exception("{} did not enter a valid 4 digit numeric ID. Do it again.".format(p))
 
+    # If here, IDs are valid. Now make API requests to see if there is an existing record.
+    for p in [hf, hd, af, ad]:
         purl = URL.format("getplayer/{}").format(p)
         player = requests.get(url=purl)
         print("player API:", player.status_code, player.text)
         player = player.text
 
+        # If player exists, print name and good to go.
         if player != "noPlayer":  # player exists
             print("game on {}".format(player))
 
-        else:  # player does not exist, need to make an entry
+        # Need to make additional API Call if player does not exist to create entry.
+        else:
             purl = URL.format("addplayer")
-            body = {"pid": p, "fullName": str(input("emp {}: enter your name".format(p)))}
+            body = {"pid": p, "fullName": str(input("emp {}: enter your name\n\t".format(p)))}
             requests.post(url=purl, json=body)
 
     return [hf, hd, af, ad]  # return a list of player IDs to start game.
@@ -91,41 +99,46 @@ def sensor_game(hf, hd, af, ad):  # home and away forward/defense positions.
 
 def input_game(hf, hd, af, ad):
     """If sensor is bugging out or don't feel like using it - can also enter game stats manually."""
+    # Continuously loop through to have player input scores until scores are valid (pass tests)
     while True:
         try:
-            hscore = int(input("\nEnter the score for home team:"))
-            ascore = int(input("\nEnter the score for away team:"))
-        except TypeError:
+            hscore = int(input("\nEnter the score for home team:\n\t"))
+            ascore = int(input("\nEnter the score for away team:\n\t"))
+        except ValueError:
             print("Need to enter an integer between 0 and 10")
             continue
         if hscore > 10 or ascore > 10:
             print("Need to enter an integer between 0 and 10")
             continue
+        elif hscore != 10 and ascore != 10:
+            print("For game to be over a team needs 10 goals. Try again.")
+            continue
         break
-
+    # Determine game result and return json for game logs.
     res = 1 if hscore > ascore else 0
     output = {"home_defense": hd, "home_offense": hf, "away_defense": ad, "away_offense": af,
               "home_score": hscore, "away_score": ascore, "home_won": res}
+    print("game output:\n{}".format(output))
     return output
 
 def upload_data(results):
     """Takes game results from above and makes API calls to foos app to load in stats."""
-    requests.post(url=URL.format("gamelog"), json=results)
-    requests.post(url=URL.format("playerstats"), json=results)
+    print("calling Gamelog API")
+    gl = requests.post(url=URL.format("gamelog"), json=results)
+    print("Gamelog API status: {}\n\nCalling Player stats API".format(gl.status_code))
+    ps = requests.post(url=URL.format("playerstats"), json=results)
+    print("Called player stats API with status: {}".format(ps.status_code))
     return True
-
-# test above.
-#print("testing get players:", get_players())
-
 
 
 # Execute the above flow of functions to run process.
-"""players = get_players()  # returns list of entry for game function
-try:
-    if sys.argv[1] == 's':
-        results = sensor_game(hf=players[0], hd=players[1], af=players[2], ad=players[3])
-    else:
+if __name__ == '__main__':
+    players = get_players()
+    try:
+        if sys.argv[1][0] == 's':
+            results = sensor_game(hf=players[0], hd=players[1], af=players[2], ad=players[3])
+        else:
+            results = input_game(hf=players[0], hd=players[1], af=players[2], ad=players[3])
+    except IndexError:
         results = input_game(hf=players[0], hd=players[1], af=players[2], ad=players[3])
-except IndexError:
-    results = input_game(hf=players[0], hd=players[1], af=players[2], ad=players[3])
-upload_data(results=results)"""
+    upload_data(results=results)

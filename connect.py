@@ -1,11 +1,10 @@
-from google.cloud import bigquery
 from google.cloud import datastore
 from google.oauth2 import service_account
 import pymysql
 import os
-import sqlalchemy
 
-# This file will return the connection needed to hook up with Cloud SQL
+# This file will return the connection needed to hook up with Cloud SQL and Datastore.
+
 
 def sql_connect():
     #Define connection based on operating system. Values defined in app.yaml file
@@ -17,29 +16,19 @@ def sql_connect():
     db_connection_name = os.environ.get('INSTANCE_CONNECTION_NAME')
     unix_socket = '/cloudsql/{}'.format(db_connection_name)
 
-    if os.environ.get('GAE-ENV') == 'standard':  # means configured to App Engine
-        #conn = pymysql.connect(user=db_user, password=db_password, unix_socket=unix_socket, db=db_name)
-        conn = sqlalchemy.create_engine(
-            "mysql+pymysql://{}:{}@/{}?unix_socket={}".format(db_user, db_password, db_name, unix_socket))
-    else:  # Connection is local machine. Use proxy.
-        host = '127.0.0.1'
-        conn = pymysql.connect(user=db_user, password=db_password, host=host, db=db_name)
+    #if os.environ.get('GAE-ENV') == 'standard':  # means configured to App Engine
+    conn = pymysql.connect(user=db_user, password=db_password, unix_socket=unix_socket, db=db_name, autocommit=True)
+    #else:  # Connection is local machine. Use proxy.
+     #   host = '127.0.0.1'
+      #  conn = pymysql.connect(user=db_user, password=db_password, host=host, db=db_name, autocommit=True)
     return conn
 
-def bq_connect():
-    if os.environ.get('GAE-ENV') == 'standard':  # means configured to App Engine
-        client = bigquery.Client()
-    else:
-        safile = "service-bq.json"
-        credentials = service_account.Credentials.from_service_account_file(safile)
-        client = bigquery.Client(project='cpb100-213205', credentials=credentials)
-    return client
 
 def ds_connect():
-    if os.environ.get('GAE-ENV') == 'standard':  # means configured to App Engine
-        client = datastore.Client()
-    else:
-        safile = "service-bq.json"
-        credentials = service_account.Credentials.from_service_account_file(safile)
-        client = datastore.Client(project='cpb100-213205', credentials=credentials)
+    #if os.environ.get('GAE-ENV') == 'standard':  # means configured to App Engine
+    client = datastore.Client()
+    #else:
+     #   safile = "service-bq.json"
+      #  credentials = service_account.Credentials.from_service_account_file(safile)
+       # client = datastore.Client(project='cpb100-213205', credentials=credentials)
     return client

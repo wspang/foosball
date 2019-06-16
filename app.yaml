@@ -3,6 +3,7 @@
 runtime: python37
 entrypoint: gunicorn -b :$PORT main:app
 service: "foosball"
+env: standard
 
 env_variables:
 

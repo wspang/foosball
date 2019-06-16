@@ -2,8 +2,7 @@
    Main methods are called from methods file. 
    Utilizes a CloudSQL backend for stats tracking. For now, only have player entry page."""
 
-from flask import Flask, redirect, render_template, request
-from connect import bq_connect
+from flask import Flask, request
 from methods import Foos, GameSetup
 import logging
 app = Flask(__name__)
@@ -46,7 +45,7 @@ def game():
     game_results = request.get_json(silent=True)  # get json from post api to process.
     logging.info("commencing game log on SQL table.")
     logged = Foos().game_log(results=game_results)  # Log the game in game logging table.
-    return logged
+    return "logged"
 
 @app.route('/playerstats', methods=['POST'])
 def stats():
@@ -55,7 +54,7 @@ def stats():
     game_results = request.get_json(silent=True)
     logging.info("commencing player stats update")
     logged = Foos().player_stats(params=game_results)
-    return logged
+    return "logged"
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=8080)
