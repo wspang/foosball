@@ -1,6 +1,9 @@
 """Main file that will be used to navigate the foosball stats tracking app. 
    Main methods are called from methods file. 
-   Utilizes a CloudSQL backend for stats tracking. For now, only have player entry page."""
+   Utilizes a CloudSQL backend for stats tracking. Player IDs verified on Datastore.
+   Datastore offers a cheaper and more efficient ID lookup, but SQL is better for analytics.
+
+   @ Author: Will Spangler"""
 
 from flask import Flask, request
 from methods import Foos, GameSetup
@@ -26,7 +29,6 @@ def getplayer(p):
         return "noPlayer"
 
 
-
 @app.route('/addplayer', methods=['POST'])
 def addplayer():
     """If a player does not already exist, post API is made to create a player with ID and name.
@@ -47,6 +49,7 @@ def game():
     logged = Foos().game_log(results=game_results)  # Log the game in game logging table.
     return "logged"
 
+
 @app.route('/playerstats', methods=['POST'])
 def stats():
     """The game_init file will run the game or supply user input for stats.
@@ -55,6 +58,7 @@ def stats():
     logging.info("commencing player stats update")
     logged = Foos().player_stats(params=game_results)
     return "logged"
+
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=8080)

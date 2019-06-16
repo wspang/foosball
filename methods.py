@@ -1,10 +1,8 @@
-"""This script is used to track the MicroController measures over a game of foos.
-   When a force measure is hit, it triggers a goal for one team.
-   4 Players are input for a game. When 10 goals are scored, it uploads data to BQ.
-   **unfortunately, cannot get cloud sql proxy on bootleg linux chromebook :( """
+"""Methods are used to construct DB updates that are called via APIs on the main file.
+   Two classes: GameSetup for player entry verification, and foos for stats tracking.
 
-import time  # used to set a delay after a goal is scored
-import os  # below cmd depends on OS type
+   @Author: Will Spangler"""
+
 from connect import sql_connect, ds_connect
 import logging
 from google.cloud import datastore

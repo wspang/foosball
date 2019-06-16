@@ -4,7 +4,7 @@ import pymysql
 import os
 
 # This file will return the connection needed to hook up with Cloud SQL and Datastore.
-
+# Hosted on app engine, uncomment below code to connect local machine.
 
 def sql_connect():
     #Define connection based on operating system. Values defined in app.yaml file

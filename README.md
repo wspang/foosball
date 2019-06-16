@@ -6,3 +6,5 @@ better yet, host updates as APIs on APP Engine. Will also hold a stats
 leaderboard page and other stuff.
 
 Loading game logs in will be via local script and use API to upload stats.
+
+Holding off on sensor for now, just using player input. Maybe build a webapp for input in the future.
