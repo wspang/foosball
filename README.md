@@ -1,10 +1,10 @@
 # foosball
-app that uses force sensors to auto track foosball statistics and upload to GCP Cloud SQL. 
-from there, cool analytics can be performed and linked to dashboards to prove who is the #1 player.
+Foosball metrics logging app that is hosted on GCP App Engine. Utilizes Cloud DataStore to track Player_IDs and names. Utilizes Cloud SQL for two tables:
 
-better yet, host updates as APIs on APP Engine. Will also hold a stats
-leaderboard page and other stuff.
+  gamelogs: uploads every game record with a datetime stamp recording who played which position, what the score was, and who won.
+  
+  players: Every row belongs to a player (player_id). Tracks how many games they have played and won overall, on offense, and defense.
+  
+Users can easily input game logs from their terminal by running `python game_init.py`. They will then be prompted from the cmd line to enter their player IDs, make a new profile if necessary, and enter the game results. Multiple APIs are made in this script to log info on GCP.
 
-Loading game logs in will be via local script and use API to upload stats.
-
-Holding off on sensor for now, just using player input. Maybe build a webapp for input in the future.
+Holding off on force sensors for now, just using player input. Maybe build a webapp for input in the future.
