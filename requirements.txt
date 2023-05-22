@@ -3,4 +3,4 @@ flask==1.0.2
 gunicorn==19.9.0
 pymysql==0.9.3
 google-cloud-datastore
-requests==2.22.0
+requests==2.31.0
